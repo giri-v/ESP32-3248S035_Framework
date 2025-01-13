@@ -157,6 +157,42 @@ char latestFirmwareFileName[100];
 // **************** Debug Parameters ************************
 String methodName = "";
 
+// Here are the callback functions that the decPNG library
+// will use to open files, fetch data and close the file.
+
+File pngfile;
+
+void *pngOpen(const char *filename, int32_t *size)
+{
+    Log.verboseln("Attempting to open %s\n", filename);
+    pngfile = SPIFFS.open(filename, "r");
+    *size = pngfile.size();
+    return &pngfile;
+}
+
+void pngClose(void *handle)
+{
+    File pngfile = *((File *)handle);
+    if (pngfile)
+        pngfile.close();
+}
+
+int32_t pngRead(PNGFILE *page, uint8_t *buffer, int32_t length)
+{
+    if (!pngfile)
+        return 0;
+    page = page; // Avoid warning
+    return pngfile.read(buffer, length);
+}
+
+int32_t pngSeek(PNGFILE *page, int32_t position)
+{
+    if (!pngfile)
+        return 0;
+    page = page; // Avoid warning
+    return pngfile.seek(position);
+}
+
 bool isNullorEmpty(char *str)
 {
     if ((str == NULL) || (str[0] == '\0'))
@@ -223,6 +259,39 @@ void playMP3Loop()
     }
 }
 
+void pngDraw(PNGDRAW *pDraw)
+{
+    uint16_t lineBuffer[MAX_IMAGE_WIDTH];
+    static uint16_t dmaBuffer[MAX_IMAGE_WIDTH]; // static so buffer persists after fn exit
+
+    png.getLineAsRGB565(pDraw, lineBuffer, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
+    tft.pushImage(xPos, yPos + pDraw->y, pDraw->iWidth, 1, lineBuffer);
+}
+
+void drawPNG(const char *filename, int x, int y)
+{
+
+    int16_t rc = png.open(filename, pngOpen, pngClose, pngRead, pngSeek, pngDraw);
+    xPos = x;
+    yPos = y;
+    if (rc == PNG_SUCCESS)
+    {
+        tft.startWrite();
+        Log.verboseln("image specs: (%d x %d), %d bpp, pixel type: %d\n", png.getWidth(), png.getHeight(), png.getBpp(), png.getPixelType());
+        uint32_t dt = millis();
+        if (png.getWidth() > MAX_IMAGE_WIDTH)
+        {
+            Serial.println("Image too wide for allocated lin buffer!");
+        }
+        else
+        {
+            rc = png.decode(NULL, 0);
+            png.close();
+        }
+        tft.endWrite();
+    }
+}
+
 void clearScreen()
 {
     tft.fillScreen(TFT_BLACK);
@@ -256,4 +325,60 @@ void drawString(String text, int x, int y, int font_size, int color, int bg_colo
     drawString(text, x, y, font_size);
 }
 
+int webGet(String req, String &res)
+{
+    String oldMethodName = methodName;
+    methodName = "webGet(String req, String &res)";
+
+    int result = -1;
+
+    Log.verboseln("Connecting to http://%s:%d%s", HTTP_SERVER, HTTP_PORT,
+                  req.c_str());
+
+    WiFiClient client;
+    HTTPClient http;
+    String payload;
+    Log.verboseln("[HTTP] begin...");
+
+    // int connRes = client.connect(IPAddress(192,168,0,12), 5000);
+    // Log.verboseln("Connected: %d", connRes);
+
+    // if (http.begin(client, req))
+    if (http.begin(client, HTTP_SERVER, HTTP_PORT, req))
+    { // HTTP
+
+        Log.verboseln("[HTTP] GET...");
+        // start connection and send HTTP header
+        int httpCode = http.GET();
+        result = httpCode;
+
+        // httpCode will be negative on error
+        if (httpCode > 0)
+        {
+            // HTTP header has been send and Server response header has
+            // been handled
+            Log.verboseln("[HTTP] GET... code: %d\n", httpCode);
+
+            // file found at server
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
+            {
+                res = http.getString();
+            }
+        }
+        else
+        {
+            Log.errorln("[HTTP] GET... failed, error: %s", http.errorToString(httpCode).c_str());
+        }
+
+        http.end();
+    }
+    else
+    {
+        Log.warningln("[HTTP] Unable to connect");
+    }
+
+    Log.verboseln("Exiting...");
+    methodName = oldMethodName;
+    return result;
+}
 #endif // FRAMEWORK_H

@@ -9,7 +9,6 @@ void connectToMqtt();
 void resetWifiFailCount(TimerHandle_t xTimer);
 void doUpdateFirmware(char *fileName);
 int getlatestFirmware(char *fileName);
-int webGet(String req, String &res);
 void checkFWUpdate();
 void onWifiConnect(const WiFiEvent_t &event);
 void onWifiDisconnect(const WiFiEvent_t &event);
@@ -230,63 +229,6 @@ int getlatestFirmware(char *fileName)
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
     return httpCode;
-}
-
-int webGet(String req, String &res)
-{
-    String oldMethodName = methodName;
-    methodName = "webGet(String req, String &res)";
-
-    int result = -1;
-
-    Log.verboseln("Connecting to http://%s:%d%s", HTTP_SERVER, HTTP_PORT,
-                  req.c_str());
-
-    WiFiClient client;
-    HTTPClient http;
-    String payload;
-    Log.verboseln("[HTTP] begin...");
-
-    // int connRes = client.connect(IPAddress(192,168,0,12), 5000);
-    // Log.verboseln("Connected: %d", connRes);
-
-    // if (http.begin(client, req))
-    if (http.begin(client, HTTP_SERVER, HTTP_PORT, req))
-    { // HTTP
-
-        Log.verboseln("[HTTP] GET...");
-        // start connection and send HTTP header
-        int httpCode = http.GET();
-        result = httpCode;
-
-        // httpCode will be negative on error
-        if (httpCode > 0)
-        {
-            // HTTP header has been send and Server response header has
-            // been handled
-            Log.verboseln("[HTTP] GET... code: %d\n", httpCode);
-
-            // file found at server
-            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-            {
-                res = http.getString();
-            }
-        }
-        else
-        {
-            Log.errorln("[HTTP] GET... failed, error: %s", http.errorToString(httpCode).c_str());
-        }
-
-        http.end();
-    }
-    else
-    {
-        Log.warningln("[HTTP] Unable to connect");
-    }
-
-    Log.verboseln("Exiting...");
-    methodName = oldMethodName;
-    return result;
 }
 
 void checkFWUpdate()
