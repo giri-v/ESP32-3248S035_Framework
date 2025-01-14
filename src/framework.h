@@ -1,3 +1,8 @@
+////////////////////////////////////////////////////////////////////
+/// @file framework.h
+/// @brief Contains all Framework #includes, globals and core functions
+////////////////////////////////////////////////////////////////////
+
 #ifndef FRAMEWORK_H
 #define FRAMEWORK_H
 
@@ -9,6 +14,10 @@ extern "C"
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
 }
+
+#ifndef APP_NAME
+#define APP_NAME ESP32FWApp
+#endif
 
 #ifndef SECRETS_H
 #define SECRETS_H
@@ -29,10 +38,11 @@ extern "C"
 #define LONGITUDE -121.8853892
 
 #endif // SECRETS_H
+
+
 #include <WiFi.h>
 #include <Preferences.h>
 #include <SPI.h>
-#include <SD.h>
 
 #ifndef LittleFS
 #include <SPIFFS.h>
@@ -41,15 +51,7 @@ extern "C"
 #endif
 #include <Update.h>
 
-#define SD_CS 5
 
-#include <TFT_eSPI.h>
-#include <OpenFontRender.h>
-#include <PNGdec.h>
-#include <JPEGDecoder.h>
-#define MAX_IMAGE_WIDTH 320
-
-#include <HTTPClient.h>
 #include <AsyncMqttClient.h>
 #include <ArduinoJson.h>
 
@@ -90,51 +92,27 @@ char topic[128] = "log/foo";
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
 #define maximum(a, b) (((a) > (b)) ? (a) : (b))
 
-#include <AudioFileSourceSD.h>
-#include <AudioFileSourceID3.h>
-#include <AudioGeneratorMP3.h>
-#include <AudioOutputI2S.h>
-
-AudioGeneratorMP3 *mp3;
-AudioOutputI2S *out;
-bool mp3Done = true;
-
-TFT_eSPI tft = TFT_eSPI(); // Create object "tft"
-OpenFontRender ofr;
-int screenWidth = tft.width();
-int screenHeight = tft.height();
-int screenCenterX = tft.width() / 2;
-int screenCenterY = tft.height() / 2;
-PNG png;
-int32_t xPos = 0;
-int32_t yPos = 0;
 
 
-#ifdef APP_NAME
+
+
+
+
 const char *appName = APP_NAME;
-#endif
-
+const char *ntpServer = NTP_SERVER;
+String hostname = HOSTNAME;
 
 int appInstanceID = -1;
 char friendlyName[100] = "NoNameSet";
 
 bool isFirstLoop = true;
 bool isGoodTime = false;
-bool isFirstDraw = true;
 
-#ifdef NTP_SERVER
-const char *ntpServer = NTP_SERVER;
-#endif
+
 
 // ********** Connectivity Parameters **********
 AsyncMqttClient mqttClient;
-TimerHandle_t mqttReconnectTimer;
-TimerHandle_t wifiReconnectTimer;
-TimerHandle_t checkFWUpdateTimer;
-TimerHandle_t appInstanceIDWaitTimer;
-TimerHandle_t wifiFailCountTimer;
 
-int wifiFailCount = 0;
 
 int volume = 50; // Volume is %
 int bootCount = 0;
@@ -144,29 +122,19 @@ int maxOtherIndex = -1;
 
 Preferences preferences;
 
-#ifdef HOSTNAME
-String hostname = HOSTNAME;
-#endif
 
 uint8_t macAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 
 
 
-// MQTT Topics (25 character limit per level)
-char onlineTopic[100];
-char willTopic[100];
-char appSubTopic[100];
 
-char latestFirmwareFileName[100];
 
 // **************** Debug Parameters ************************
 String methodName = "";
 
-// PNGDec Veriables
-File pngfile;
 
-
+#pragma region Standard Helper Functions
 
 bool isNullorEmpty(char *str)
 {
@@ -191,6 +159,148 @@ bool isNumeric(char *str)
     }
     return true;
 }
+
+#pragma endregion
+
+#pragma region File System
+
+void initFS()
+{
+#ifndef LittleFS
+    // Initialize SPIFFS
+    if (!SPIFFS.begin(true))
+    {
+        Log.errorln("An Error has occurred while mounting SPIFFS");
+        return;
+    }
+#else
+    if (!LittleFS.begin())
+    {
+        Log.errorln("Flash FS initialisation failed!");
+        while (1)
+            yield(); // Stay here twiddling thumbs waiting
+    }
+    Log.infoln("Flash FS available!");
+
+#endif
+}
+
+#pragma endregion
+
+#pragma region Display and Drawing Functions
+
+#ifdef USE_GRAPHICS
+
+#include <TFT_eSPI.h>
+
+TFT_eSPI tft = TFT_eSPI(); // Create object "tft"
+
+int screenWidth = tft.width();
+int screenHeight = tft.height();
+int screenCenterX = tft.width() / 2;
+int screenCenterY = tft.height() / 2;
+
+void clearScreen()
+{
+    tft.fillScreen(TFT_BLACK);
+}
+
+#endif
+
+#pragma endregion
+
+#pragma region OpenFontRenderer Drawing Functions
+
+#ifdef USE_OPEN_FONT_RENDERER
+
+#include <OpenFontRender.h>
+
+OpenFontRender ofr;
+
+void drawString(String text, int x, int y)
+{
+    ofr.setCursor(x, y);
+    if (ofr.getAlignment() == Align::MiddleCenter)
+    {
+        ofr.setCursor(x, y - ofr.getFontSize() / 5 - 2);
+    }
+    ofr.printf(text.c_str());
+}
+
+void drawString(String text, int x, int y, int font_size)
+{
+    ofr.setFontSize(font_size);
+    drawString(text, x, y);
+}
+
+void drawString(String text, int x, int y, int font_size, int color)
+{
+    ofr.setFontColor(color);
+    drawString(text, x, y, font_size);
+}
+
+void drawString(String text, int x, int y, int font_size, int color, int bg_color)
+{
+    ofr.setFontColor(color, bg_color);
+    drawString(text, x, y, font_size);
+}
+
+#endif
+
+#pragma endregion
+
+#pragma region SD Card Functions
+
+#ifdef USE_SD_CARD
+#include <SD.h>
+
+#define SD_CS 5
+
+void initSD()
+{
+    String oldMethodName = methodName;
+    methodName = "initSD()";
+    Log.verboseln("Entering...");
+
+    if (!SD.begin(SD_CS))
+    {
+        Log.errorln("SD Card Mount Failed");
+        return;
+    }
+    uint8_t cardType = SD.cardType();
+    if (cardType == CARD_NONE)
+    {
+        Log.errorln("No SD card attached");
+        return;
+    }
+    Log.infoln("SD Card Type: %s", cardType == CARD_MMC ? "MMC" : cardType == CARD_SD ? "SDSC"
+                                                              : cardType == CARD_SDHC ? "SDHC"
+                                                                                      : "UNKNOWN");
+
+    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+    Log.infoln("SD Card Size: %lluMB", cardSize);
+
+    Log.verboseln("Exiting...");
+    methodName = oldMethodName;
+}
+#endif
+
+#pragma endregion
+
+#pragma region Audio Functions
+
+#ifdef USE_AUDIO
+#include <AudioFileSourceSD.h>
+#include <AudioFileSourceID3.h>
+#include <AudioGeneratorMP3.h>
+#include <AudioOutputI2S.h>
+
+AudioGeneratorMP3 *mp3;
+AudioOutputI2S *out;
+bool mp3Done = true;
+
+/// @fn void initAudioOutput()
+/// @brief The only function to 
 
 void initAudioOutput()
 {
@@ -234,6 +344,24 @@ void playMP3Loop()
     }
 }
 
+#endif
+
+#pragma endregion
+
+#pragma region PNG Decoder Functions
+
+#ifdef USE_PNG_DECODER
+
+#include <PNGdec.h>
+
+#define MAX_IMAGE_WIDTH 320
+
+// PNGDec Veriables
+File pngfile;
+PNG png;
+int32_t xPos = 0;
+int32_t yPos = 0;
+
 // PNGDec File I/O Helper Functions
 void *pngOpen(const char *filename, int32_t *size)
 {
@@ -266,7 +394,8 @@ int32_t pngSeek(PNGFILE *page, int32_t position)
     return pngfile.seek(position);
 }
 
-/// @brief Draw the PNG Image 
+/// @brief PNGDecoder Helper function to allow the decoder engine to draw a single line
+///        of the image
 /// @param pDraw 
 void pngDraw(PNGDRAW *pDraw)
 {
@@ -301,11 +430,16 @@ void drawPNG(const char *filename, int x, int y)
     }
 }
 
-// ####################################################################################################
-//  Draw a JPEG on the TFT, images will be cropped on the right/bottom sides if they do not fit
-// ####################################################################################################
-//  This function assumes xpos,ypos is a valid screen coordinate. For convenience images that do not
-//  fit totally on the screen are cropped to the nearest MCU size and may leave right/bottom borders.
+#endif
+
+#pragma endregion
+
+#pragma region JPEG Decoder Functions
+
+#ifdef USE_JPEG_DECODER
+
+#include <JPEGDecoder.h>
+
 void renderJPEG(int xpos, int ypos)
 {
 
@@ -406,55 +540,6 @@ void renderJPEG(int xpos, int ypos)
     // Log.infoln("renderJPEG(): Total render time was: %ims", drawTime);
 }
 
-// ####################################################################################################
-//  Print image information to the serial port (optional)
-// ####################################################################################################
-void jpegInfo()
-{
-    Log.infoln(F("==============="));
-    Log.infoln(F("JPEG image info"));
-    Log.infoln(F("==============="));
-    Log.info(F("Width      :"));
-    Log.infoln("%i", JpegDec.width);
-    Log.info(F("Height     :"));
-    Log.infoln("%i", JpegDec.height);
-    Log.info(F("Components :"));
-    Log.infoln("%i", JpegDec.comps);
-    Log.info(F("MCU / row  :"));
-    Log.infoln("%i", JpegDec.MCUSPerRow);
-    Log.info(F("MCU / col  :"));
-    Log.infoln("%i", JpegDec.MCUSPerCol);
-    // Log.info(F("Scan type  :"));
-    // Log.infoln(JpegDec.scanType);
-    Log.info(F("MCU width  :"));
-    Log.infoln("%i", JpegDec.MCUWidth);
-    Log.info(F("MCU height :"));
-    Log.infoln("%i", JpegDec.MCUHeight);
-    Log.infoln(F("==============="));
-}
-
-// ####################################################################################################
-//  Show the execution time (optional)
-// ####################################################################################################
-//  WARNING: for UNO/AVR legacy reasons printing text to the screen with the Mega might not work for
-//  sketch sizes greater than ~70KBytes because 16-bit address pointers are used in some libraries.
-
-// The Due will work fine with the HX8357_Due library.
-
-void showTime(uint32_t msTime)
-{
-    // tft.setCursor(0, 0);
-    // tft.setTextFont(1);
-    // tft.setTextSize(2);
-    // tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    // tft.print(F(" JPEG drawn in "));
-    // tft.print(msTime);
-    // tft.println(F(" ms "));
-    Log.info(F(" JPEG drawn in "));
-    Log.info("%i", msTime);
-    Log.infoln(F(" ms "));
-}
-
 void drawArrayJpeg(const uint8_t arrayname[], uint32_t array_size, int xpos, int ypos)
 {
 
@@ -462,50 +547,22 @@ void drawArrayJpeg(const uint8_t arrayname[], uint32_t array_size, int xpos, int
 
     if (decoded)
     {
-        // print information about the image to the serial port
-        jpegInfo();
-
         // render the image onto the screen at given coordinates
         renderJPEG(xpos, ypos);
     }
     else
     {
-        Serial.println("Jpeg file format not supported!");
+        Log.errorln("Jpeg file format not supported!");
     }
 }
 
-void clearScreen()
-{
-    tft.fillScreen(TFT_BLACK);
-}
+#endif
 
-void drawString(String text, int x, int y)
-{
-    ofr.setCursor(x, y);
-    if (ofr.getAlignment() == Align::MiddleCenter)
-    {
-        ofr.setCursor(x, y - ofr.getFontSize() / 5 - 2);
-    }
-    ofr.printf(text.c_str());
-}
+#pragma endregion
 
-void drawString(String text, int x, int y, int font_size)
-{
-    ofr.setFontSize(font_size);
-    drawString(text, x, y);
-}
+#pragma region HTTP Client Functions
 
-void drawString(String text, int x, int y, int font_size, int color)
-{
-    ofr.setFontColor(color);
-    drawString(text, x, y, font_size);
-}
-
-void drawString(String text, int x, int y, int font_size, int color, int bg_color)
-{
-    ofr.setFontColor(color, bg_color);
-    drawString(text, x, y, font_size);
-}
+#include <HTTPClient.h>
 
 int webGet(String req, String &res)
 {
@@ -563,4 +620,6 @@ int webGet(String req, String &res)
     methodName = oldMethodName;
     return result;
 }
+#pragma endregion
+
 #endif // FRAMEWORK_H

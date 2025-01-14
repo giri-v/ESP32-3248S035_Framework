@@ -1,3 +1,8 @@
+////////////////////////////////////////////////////////////////////
+/// @file app_functions.h
+/// @brief Contains application specific includes. variables and functions
+////////////////////////////////////////////////////////////////////
+
 #ifndef APP_FUNCTIONS_H
 #define APP_FUNCTIONS_H
 
@@ -10,14 +15,13 @@
 int appVersion = 1;
 const char *appSecret = APP_SECRET;
 
+bool isFirstDraw = true;
+
 // ********** Connectivity Parameters **********
 
 typedef void (*mqttMessageHandler)(char *topic, char *payload,
                                    AsyncMqttClientMessageProperties properties,
                                    size_t len, size_t index, size_t total);
-
-int maxWifiFailCount = 5;
-int wifiFailCountTimeLimit = 10;
 
 // ********** App Global Variables **********
 
@@ -29,6 +33,8 @@ const int daylightOffset_sec = 3600;
 // Should be /internal/iot/firmware
 const char *firmwareUrl = "/firmware/";
 const char *appRootUrl = "/internal/iot/";
+
+char appSubTopic[100];
 
 char minute[3] = "00";
 char currentTime[6] = "00:00";
@@ -74,8 +80,6 @@ void drawSplashScreen()
     methodName = "drawSplashScreen()";
     Log.verboseln("Entering");
 
-    drawString(appName, screenCenterX, screenCenterY, appNameFontSize);
-
     char showText[100];
     if (appInstanceID < 0)
     {
@@ -85,10 +89,14 @@ void drawSplashScreen()
     {
         sprintf(showText, "Name: %s", friendlyName);
     }
+    sprintf(showText, "Device ID: %i", appInstanceID);
+#ifdef USE_OPEN_FONT_RENDERER
+    drawString(appName, screenCenterX, screenCenterY, appNameFontSize);
+
     drawString(showText, screenCenterX, screenCenterY + appNameFontSize / 2 + friendlyNameFontSize, friendlyNameFontSize);
 
-    sprintf(showText, "Device ID: %i", appInstanceID);
     drawString(showText, screenCenterX, tft.height() - appInstanceIDFontSize / 2, appInstanceIDFontSize);
+#endif
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
@@ -101,14 +109,20 @@ void setupDisplay()
     Log.verboseln("Entering");
 
     Log.infoln("Setting up display.");
+
+#ifdef USE_GRAPHICS
     tft.init();
     tft.setRotation(2);
     tft.fillScreen(TFT_BLACK);
+#endif
+
+#ifdef USE_OPEN_FONT_RENDERER
     ofr.setDrawer(tft);
     ofr.loadFont(NotoSans_Bold, sizeof(NotoSans_Bold));
     ofr.setFontColor(TFT_WHITE, TFT_BLACK);
     ofr.setFontSize(baseFontSize);
     ofr.setAlignment(Align::MiddleCenter);
+#endif
 
     drawSplashScreen();
 
@@ -118,9 +132,6 @@ void setupDisplay()
 
 void initAppStrings()
 {
-    sprintf(onlineTopic, "%s/online", appName);
-    sprintf(willTopic, "%s/offline", appName);
-
     sprintf(appSubTopic, "%s/#", appName);
 }
 
@@ -151,6 +162,12 @@ void ProcessMqttConnectTasks()
     String oldMethodName = methodName;
     methodName = "ProcessMqttConnectTasks()";
     Log.verboseln("Entering...");
+
+    uint16_t packetIdSub1 = mqttClient.subscribe(appSubTopic, 2);
+    if (packetIdSub1 > 0)
+        Log.infoln("Subscribing to %s at QoS 2, packetId: %u", appSubTopic, packetIdSub1);
+    else
+        Log.errorln("Failed to subscribe to %s!!!", appSubTopic);
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
@@ -363,8 +380,15 @@ void drawTime()
     methodName = "drawTime()";
     Log.verboseln("Entering...");
 
+#ifdef USE_GRAPHICS
     tft.fillScreen(TFT_BLACK);
+
+#ifdef USE_OPEN_FONT_RENDERER
     drawString(currentTime, screenCenterX, screenCenterY, timeFontSize);
+#endif
+
+#endif
+
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
@@ -403,6 +427,8 @@ void app_loop()
                 Log.infoln("Time not set yet.");
         }
 
+#ifdef USE_GRAPHICS
+
         if (isFirstDraw)
         {
             isFirstDraw = false;
@@ -414,6 +440,7 @@ void app_loop()
         {
             drawTime();
         }
+#endif
     }
 }
 #endif // APP_FUNCTIONS_H

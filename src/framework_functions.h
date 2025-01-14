@@ -1,9 +1,25 @@
+////////////////////////////////////////////////////////////////////
+/// @file framework_functions.h
+/// @brief Contains all Framework #includes, globals and core functions
+////////////////////////////////////////////////////////////////////
+
 #ifndef FRAMEWORK_FUNCTIONS_H
 #define FRAMEWORK_FUNCTIONS_H
 
 #include "framework.h"
 
-void initFS();
+int maxWifiFailCount = 5;
+int wifiFailCountTimeLimit = 10;
+TimerHandle_t mqttReconnectTimer;
+TimerHandle_t wifiReconnectTimer;
+// TimerHandle_t checkFWUpdateTimer;
+TimerHandle_t appInstanceIDWaitTimer;
+TimerHandle_t wifiFailCountTimer;
+
+int wifiFailCount = 0;
+
+char latestFirmwareFileName[100];
+
 void connectToWifi();
 void connectToMqtt();
 void resetWifiFailCount(TimerHandle_t xTimer);
@@ -15,69 +31,14 @@ void onWifiDisconnect(const WiFiEvent_t &event);
 void WiFiEvent(WiFiEvent_t event);
 void mqttPublishWill();
 void mqttPublishID();
-bool isNumeric(char *str);
 bool checkMessageForAppSecret(JsonDocument &doc);
-void onMqttMessage(char *topic, char *payload,
-                   AsyncMqttClientMessageProperties properties,
-                   size_t len, size_t index, size_t total);
+void onMqttMessage(char *topic, char *payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
 void logMACAddress(uint8_t baseMac[6]);
 void setAppInstanceID();
 void framework_setup();
 void logWakeupReason(esp_sleep_wakeup_cause_t wakeup_reason);
 void logResetReason(esp_reset_reason_t reset_reason);
 void framework_loop();
-void initSD();
-
-void initFS()
-{
-#ifndef LittleFS
-    // Initialize SPIFFS
-    if (!SPIFFS.begin(true))
-    {
-        Log.errorln("An Error has occurred while mounting SPIFFS");
-        return;
-    }
-#else
-    if (!LittleFS.begin())
-    {
-        Log.errorln("Flash FS initialisation failed!");
-        while (1)
-            yield(); // Stay here twiddling thumbs waiting
-    }
-    Log.infoln("Flash FS available!");
-
-#endif
-}
-
-void initSD()
-{
-    String oldMethodName = methodName;
-    methodName = "initSD()";
-    Log.verboseln("Entering...");
-
-    if (!SD.begin(SD_CS))
-    {
-        Log.errorln("SD Card Mount Failed");
-        return;
-    }
-    uint8_t cardType = SD.cardType();
-    if (cardType == CARD_NONE)
-    {
-        Log.errorln("No SD card attached");
-        return;
-    }
-    Log.infoln("SD Card Type: %s", cardType == CARD_MMC ? "MMC" : cardType == CARD_SD ? "SDSC"
-                                                              : cardType == CARD_SDHC ? "SDHC"
-                                                                                      : "UNKNOWN");
-
-    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
-    Log.infoln("SD Card Size: %lluMB", cardSize);
-
-    Log.verboseln("Exiting...");
-    methodName = oldMethodName;
-}
-
-
 
 void connectToWifi()
 {
@@ -414,17 +375,11 @@ void onMqttConnect(bool sessionPresent)
     Log.infoln("Connected to MQTT broker: %p , port: %d", MQTT_HOST, MQTT_PORT);
     Log.infoln("Session present: %T", sessionPresent);
 
-    uint16_t packetIdSub1 = mqttClient.subscribe(appSubTopic, 2);
-    if (packetIdSub1 > 0)
-        Log.infoln("Subscribing to %s at QoS 2, packetId: %u", appSubTopic, packetIdSub1);
-    else
-        Log.errorln("Failed to subscribe to %s!!!", appSubTopic);
-
     if (appInstanceID > -1)
     {
+        // TODO: This function is stuck - need to reenable
         mqttPublishID();
         // mqttPublishWill();
-        ProcessMqttConnectTasks();
     }
     else
     {
@@ -432,6 +387,9 @@ void onMqttConnect(bool sessionPresent)
         Log.infoln("Don't have appInstanceID yet so nothing to publish to MQTT.");
         // wichimeIDWaitTimer.once_ms(10000, registerMQTTTopics);
     }
+
+    ProcessMqttConnectTasks();
+
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
 }
@@ -718,9 +676,15 @@ void framework_setup()
         Log.infoln("AppInstanceID: %d", appInstanceID);
     }
 
+#ifdef USE_SD_CARD
     initSD();
+#endif
+
     initFS();
+
+#ifdef USE_AUDIO
     initAudioOutput();
+#endif
 
     setupDisplay();
     // Framework region end
@@ -762,8 +726,11 @@ void framework_loop()
 {
     TLogPlus::Log.loop();
 
+#ifdef USE_AUDIO
     if (!mp3Done)
         playMP3Loop();
+#endif
+
 }
 
 void framework_start()
