@@ -676,18 +676,19 @@ void framework_setup()
         Log.infoln("AppInstanceID: %d", appInstanceID);
     }
 
+    initFS();
+
 #ifdef USE_SD_CARD
     initSD();
 #endif
-
-    initFS();
 
 #ifdef USE_AUDIO
     initAudioOutput();
 #endif
 
+#ifdef USE_GRAPHICS
     setupDisplay();
-    // Framework region end
+#endif
 
     // This is connectivity setup code
     mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE,
@@ -730,7 +731,6 @@ void framework_loop()
     if (!mp3Done)
         playMP3Loop();
 #endif
-
 }
 
 void framework_start()

@@ -371,6 +371,16 @@ void *pngOpen(const char *filename, int32_t *size)
     return &pngfile;
 }
 
+#ifdef USE_SD_CARD
+void *pngOpenSD(const char *filename, int32_t *size)
+{
+    Log.verboseln("Attempting to open %s\n", filename);
+    pngfile = SD.open(filename, "r");
+    *size = pngfile.size();
+    return &pngfile;
+}
+#endif
+
 void pngClose(void *handle)
 {
     File pngfile = *((File *)handle);
@@ -429,6 +439,34 @@ void drawPNG(const char *filename, int x, int y)
         tft.endWrite();
     }
 }
+
+
+#ifdef USE_SD_CARD
+
+void drawPNGFromSD(const char *filename, int x, int y)
+{
+
+    int16_t rc = png.open(filename, pngOpenSD, pngClose, pngRead, pngSeek, pngDraw);
+    xPos = x;
+    yPos = y;
+    if (rc == PNG_SUCCESS)
+    {
+        tft.startWrite();
+        Log.verboseln("image specs: (%d x %d), %d bpp, pixel type: %d\n", png.getWidth(), png.getHeight(), png.getBpp(), png.getPixelType());
+        uint32_t dt = millis();
+        if (png.getWidth() > MAX_IMAGE_WIDTH)
+        {
+            Serial.println("Image too wide for allocated lin buffer!");
+        }
+        else
+        {
+            rc = png.decode(NULL, 0);
+            png.close();
+        }
+        tft.endWrite();
+    }
+}
+#endif
 
 #endif
 
