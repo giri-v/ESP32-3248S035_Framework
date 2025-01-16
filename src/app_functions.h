@@ -8,12 +8,15 @@
 
 #include "framework.h"
 
+
+#include "web_server.h"
+
 #include "../assets/fonts/NotoSans_Bold.h"
 
 // ********* Framework App Parameters *****************
 
 int appVersion = 1;
-const char *appSecret = APP_SECRET;
+
 
 bool isFirstDraw = true;
 
@@ -135,6 +138,9 @@ void initAppStrings()
     sprintf(appSubTopic, "%s/#", appName);
 }
 
+
+
+
 void ProcessWifiConnectTasks()
 {
     String oldMethodName = methodName;
@@ -142,6 +148,8 @@ void ProcessWifiConnectTasks()
     Log.verboseln("Entering...");
 
     drawTime();
+
+    initWebServer();
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
@@ -411,6 +419,7 @@ void app_setup()
     Log.infoln("Configuring hardware.");
     // pinMode(DOORBELL_PIN, INPUT);
     // attachInterrupt(digitalPinToInterrupt(DOORBELL_PIN), doorbellPressed, FALLING);
+
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;

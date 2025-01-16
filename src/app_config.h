@@ -7,7 +7,7 @@
 #define APP_CONFIG_H
 
 // ************ App Name ***************
-#define APP_NAME "esp32FWApp"
+#define APP_NAME "ESP32FWApp"
 #include <secrets.h>
 
 #define LOG_LEVEL LOG_LEVEL_INFO

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////
-/// @file app_config.h
-/// @brief Contains application specific configuration defines.
+/// @file build_options.h
+/// @brief Contains defines that select framework features.
 ////////////////////////////////////////////////////////////////////
 
 #ifndef BUILD_OPTIONS_H

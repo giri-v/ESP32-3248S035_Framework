@@ -51,7 +51,7 @@ extern "C"
 #endif
 #include <Update.h>
 
-
+#include <ESPAsyncWebServer.h>
 #include <AsyncMqttClient.h>
 #include <ArduinoJson.h>
 
@@ -99,6 +99,9 @@ char topic[128] = "log/foo";
 
 
 const char *appName = APP_NAME;
+const char *appSecret = APP_SECRET;
+#define FIRMWARE_VERSION "v0.0.1"
+
 const char *ntpServer = NTP_SERVER;
 String hostname = HOSTNAME;
 
@@ -111,6 +114,7 @@ bool isGoodTime = false;
 
 
 // ********** Connectivity Parameters **********
+AsyncWebServer webServer(80);
 AsyncMqttClient mqttClient;
 
 
@@ -119,7 +123,7 @@ int bootCount = 0;
 esp_sleep_wakeup_cause_t wakeup_reason;
 esp_reset_reason_t reset_reason;
 int maxOtherIndex = -1;
-
+bool shouldReboot = false;
 Preferences preferences;
 
 
@@ -160,7 +164,23 @@ bool isNumeric(char *str)
     return true;
 }
 
+// Make size of files human readable
+// source: https://github.com/CelliesProjects/minimalUploadAuthESP32
+String humanReadableSize(const size_t bytes)
+{
+    if (bytes < 1024)
+        return String(bytes) + " B";
+    else if (bytes < (1024 * 1024))
+        return String(bytes / 1024.0) + " KB";
+    else if (bytes < (1024 * 1024 * 1024))
+        return String(bytes / 1024.0 / 1024.0) + " MB";
+    else
+        return String(bytes / 1024.0 / 1024.0 / 1024.0) + " GB";
+}
+
 #pragma endregion
+
+
 
 #pragma region File System
 
@@ -180,9 +200,8 @@ void initFS()
         while (1)
             yield(); // Stay here twiddling thumbs waiting
     }
-    Log.infoln("Flash FS available!");
-
 #endif
+    Log.infoln("Flash FS available!");
 }
 
 #pragma endregion
