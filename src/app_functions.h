@@ -8,8 +8,9 @@
 
 #include "framework.h"
 
-
+#ifdef USE_WEB_SERVER
 #include "web_server.h"
+#endif
 
 #include "../assets/fonts/NotoSans_Bold.h"
 
@@ -67,6 +68,7 @@ void ProcessWifiConnectTasks();
 void appMessageHandler(char *topic, JsonDocument &doc);
 void setupDisplay();
 void initAppStrings();
+void initWebServer();
 bool checkGoodTime();
 bool getNewTime();
 void drawSplashScreen();
@@ -149,7 +151,9 @@ void ProcessWifiConnectTasks()
 
     drawTime();
 
+#ifdef USE_WEB_SERVER
     initWebServer();
+#endif
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;

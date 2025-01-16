@@ -51,7 +51,11 @@ extern "C"
 #endif
 #include <Update.h>
 
+#ifdef USE_WEB_SERVER
 #include <ESPAsyncWebServer.h>
+AsyncWebServer webServer(80);
+#endif
+
 #include <AsyncMqttClient.h>
 #include <ArduinoJson.h>
 
@@ -114,7 +118,6 @@ bool isGoodTime = false;
 
 
 // ********** Connectivity Parameters **********
-AsyncWebServer webServer(80);
 AsyncMqttClient mqttClient;
 
 

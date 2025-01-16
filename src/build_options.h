@@ -12,5 +12,6 @@
 #define USE_AUDIO
 #define USE_JPEG_DECODER
 #define USE_PNG_DECODER
+#define USE_WEB_SERVER
 
 #endif /// BUILD_OPTIONS_H

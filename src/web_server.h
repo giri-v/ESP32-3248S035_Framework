@@ -51,6 +51,7 @@ String listFiles(bool ishtml)
     return returnText;
 }
 
+
 // parses and processes webpages
 // if the webpage has %SOMETHING% or %SOMETHINGELSE% it will replace those strings with the ones defined
 String processor(const String &var)
@@ -82,6 +83,7 @@ String processor(const String &var)
 
     return "Undefined!";
 }
+
 
 void initWebServer()
 {

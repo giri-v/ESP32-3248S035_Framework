@@ -733,12 +733,13 @@ void framework_setup()
 void framework_loop()
 {
     TLogPlus::Log.loop();
-
+#ifdef USE_WEB_SERVER
     if (shouldReboot)
     {
         shouldReboot = false;
         reboot("Web Admin Initiated Reboot");
     }
+#endif
 
 #ifdef USE_AUDIO
     if (!mp3Done)
