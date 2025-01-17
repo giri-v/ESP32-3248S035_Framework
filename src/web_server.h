@@ -127,8 +127,25 @@ void initWebServer()
                    }
                });
 
+    webServer.on("/simple.css", HTTP_GET, [](AsyncWebServerRequest *request)
+                 {
+                   String logmessage = "Client:" + request->client()->remoteIP().toString() + +" " + request->url();
+
+                   if (checkUserWebAuth(request))
+                   {
+                       logmessage += " Auth: Success";
+                       Log.infoln(logmessage.c_str());
+                       request->send_P(200, "text/css", simple_css, processor);
+                   }
+                   else
+                   {
+                       logmessage += " Auth: Failed";
+                       Log.infoln(logmessage.c_str());
+                       return request->requestAuthentication();
+                   } });
+
     webServer.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request)
-               {
+                 {
     String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
 
     if (checkUserWebAuth(request)) {
