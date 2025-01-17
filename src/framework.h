@@ -44,11 +44,8 @@ extern "C"
 #include <Preferences.h>
 #include <SPI.h>
 
-#ifndef LittleFS
 #include <SPIFFS.h>
-#else
-#include <LittleFS.h>
-#endif
+
 #include <Update.h>
 
 #ifdef USE_WEB_SERVER
@@ -133,10 +130,6 @@ Preferences preferences;
 uint8_t macAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 
-
-
-
-
 // **************** Debug Parameters ************************
 String methodName = "";
 
@@ -182,8 +175,6 @@ String humanReadableSize(const size_t bytes)
 }
 
 #pragma endregion
-
-
 
 #pragma region File System
 
@@ -300,7 +291,7 @@ void initSD()
                                                                                       : "UNKNOWN");
 
     uint64_t cardSize = SD.cardSize() / (1024 * 1024);
-    Log.infoln("SD Card Size: %lluMB", cardSize);
+    Log.infoln("SD Card Size: %l MB", cardSize);
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
@@ -389,7 +380,10 @@ void *pngOpen(const char *filename, int32_t *size)
 {
     Log.verboseln("Attempting to open %s\n", filename);
     pngfile = SPIFFS.open(filename, "r");
-    *size = pngfile.size();
+    if (!pngfile)
+        Log.errorln("Failed to open %s", filename);
+    else
+        *size = pngfile.size();
     return &pngfile;
 }
 
@@ -398,7 +392,10 @@ void *pngOpenSD(const char *filename, int32_t *size)
 {
     Log.verboseln("Attempting to open %s\n", filename);
     pngfile = SD.open(filename, "r");
-    *size = pngfile.size();
+    if (!pngfile)
+        Log.errorln("Failed to open %s", filename);
+    else
+        *size = pngfile.size();
     return &pngfile;
 }
 #endif
