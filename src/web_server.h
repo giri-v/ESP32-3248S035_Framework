@@ -13,16 +13,16 @@
 void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 bool checkUserWebAuth(AsyncWebServerRequest *request);
 void notFound(AsyncWebServerRequest *request);
-void configureWebServer();
+void initWebServer();
 String processor(const String &var);
-
+String listFiles(fs::FS &fs, bool ishtml);
 
 // list all of the files, if ishtml=true, return html rather than simple text
-String listFiles(bool ishtml)
+String listFiles(fs::FS &fs, bool ishtml)
 {
     String returnText = "";
     Log.infoln("Listing files stored on SPIFFS");
-    File root = SPIFFS.open("/");
+    File root = fs.open("/");
     File foundfile = root.openNextFile();
     if (ishtml)
     {
@@ -60,39 +60,7 @@ String listFiles(bool ishtml)
     return returnText;
 }
 
-// list all of the files, if ishtml=true, return html rather than simple text
-String listSDFiles(bool ishtml)
-{
-    String returnText = "";
-    Log.infoln("Listing files stored on SD Card");
-    File root = SD.open("/");
-    File foundfile = root.openNextFile();
-    if (ishtml)
-    {
-        returnText += "<table><tr><th align='left'>Name</th><th align='left'>Size</th><th></th><th></th></tr>";
-    }
-    while (foundfile)
-    {
-        if (ishtml)
-        {
-            returnText += "<tr align='left'><td>" + String(foundfile.name()) + "</td><td>" + humanReadableSize(foundfile.size()) + "</td>";
-            returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'download\')\">Download</button>";
-            returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
-        }
-        else
-        {
-            returnText += "File: " + String(foundfile.name()) + " Size: " + humanReadableSize(foundfile.size()) + "\n";
-        }
-        foundfile = root.openNextFile();
-    }
-    if (ishtml)
-    {
-        returnText += "</table>";
-    }
-    root.close();
-    foundfile.close();
-    return returnText;
-}
+
 
 // parses and processes webpages
 // if the webpage has %SOMETHING% or %SOMETHINGELSE% it will replace those strings with the ones defined
@@ -137,6 +105,9 @@ void initWebServer()
 
     // run handleUpload function when any file is uploaded
     webServer.onFileUpload(handleUpload);
+
+    // Handle static files
+    webServer.serveStatic("", SPIFFS, "/www/");
 
     // visiting this page will cause you to be logged out
     webServer.on("/logout", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -207,25 +178,27 @@ void initWebServer()
     if (checkUserWebAuth(request)) {
       logmessage += " Auth: Success";
       Log.infoln(logmessage.c_str());
-      request->send(200, "text/plain", listFiles(true));
+      request->send(200, "text/plain", listFiles(SPIFFS, true));
     } else {
       logmessage += " Auth: Failed";
       Log.infoln(logmessage.c_str());
       return request->requestAuthentication();
     } });
 
+#ifdef USE_SD_CARD
     webServer.on("/listSDfiles", HTTP_GET, [](AsyncWebServerRequest *request)
                  {
     String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
     if (checkUserWebAuth(request)) {
       logmessage += " Auth: Success";
       Log.infoln(logmessage.c_str());
-      request->send(200, "text/plain", listSDFiles(true));
+      request->send(200, "text/plain", listFiles(SD, true));
     } else {
       logmessage += " Auth: Failed";
       Log.infoln(logmessage.c_str());
       return request->requestAuthentication();
     } });
+#endif
 
     webServer.on("/file", HTTP_GET, [](AsyncWebServerRequest *request)
                {

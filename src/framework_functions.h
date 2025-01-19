@@ -8,11 +8,14 @@
 
 #include "framework.h"
 
+// For US Pacific Time Zone
+const char *localTZ = "PST8PDT,M3.2.0/2:00:00,M11.1.0/2:00:00";
+const long gmtOffset_sec = -8 * 60 * 60;
+const int daylightOffset_sec = 3600;
 int maxWifiFailCount = 5;
 int wifiFailCountTimeLimit = 10;
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
-// TimerHandle_t checkFWUpdateTimer;
 TimerHandle_t appInstanceIDWaitTimer;
 TimerHandle_t wifiFailCountTimer;
 
@@ -240,6 +243,22 @@ void checkFWUpdate()
     {
         Log.infoln("No new firmware available.");
     }
+
+    Log.verboseln("Exiting...");
+    methodName = oldMethodName;
+}
+
+void setAppInstanceID()
+{
+    String oldMethodName = methodName;
+    methodName = "setAppInstanceID()";
+    Log.verboseln("Entering...");
+
+    appInstanceID = maxOtherIndex + 1;
+    storePrefs();
+
+    Log.infoln("Got appInstanceID, restarting...");
+    esp_restart();
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;

@@ -29,10 +29,7 @@ typedef void (*mqttMessageHandler)(char *topic, char *payload,
 
 // ********** App Global Variables **********
 
-// For US Pacific Time Zone
-const char *localTZ = "PST8PDT,M3.2.0/2:00:00,M11.1.0/2:00:00";
-const long gmtOffset_sec = -8 * 60 * 60;
-const int daylightOffset_sec = 3600;
+
 
 // Should be /internal/iot/firmware
 const char *firmwareUrl = "/firmware/";
@@ -60,12 +57,15 @@ void printTimestamp(Print *_logOutput, int x);
 void logTimestamp();
 void storePrefs();
 void loadPrefs();
-void setAppInstanceID();
 void ProcessMqttDisconnectTasks();
 void ProcessMqttConnectTasks();
 void ProcessWifiDisconnectTasks();
 void ProcessWifiConnectTasks();
 void appMessageHandler(char *topic, JsonDocument &doc);
+void app_loop();
+void app_setup();
+
+// Example functions
 void setupDisplay();
 void initAppStrings();
 void initWebServer();
@@ -73,8 +73,7 @@ bool checkGoodTime();
 bool getNewTime();
 void drawSplashScreen();
 void drawTime();
-void app_loop();
-void app_setup();
+
 
 //////////////////////////////////////////
 //// Customizable Functions
@@ -217,22 +216,6 @@ void appMessageHandler(char *topic, JsonDocument &doc)
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
     return;
-}
-
-void setAppInstanceID()
-{
-    String oldMethodName = methodName;
-    methodName = "setAppInstanceID()";
-    Log.verboseln("Entering...");
-
-    appInstanceID = maxOtherIndex + 1;
-    storePrefs();
-
-    Log.infoln("Got appInstanceID, restarting...");
-    esp_restart();
-
-    Log.verboseln("Exiting...");
-    methodName = oldMethodName;
 }
 
 void loadPrefs()
