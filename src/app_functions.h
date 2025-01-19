@@ -149,7 +149,6 @@ void ProcessWifiConnectTasks()
     methodName = "ProcessAppWifiConnectTasks()";
     Log.verboseln("Entering...");
 
-    drawTime();
 
 #ifdef USE_WEB_SERVER
     initWebServer();
@@ -386,6 +385,11 @@ bool getNewTime()
     return false;
 }
 
+void redrawScreen()
+{
+    drawTime();
+}
+
 void drawTime()
 {
     String oldMethodName = methodName;
@@ -463,6 +467,7 @@ void app_loop()
         {
             isFirstDraw = false;
             clearScreen();
+            redrawScreen();
         }
 
         // put your main code here, to run repeatedly:
