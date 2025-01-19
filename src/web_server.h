@@ -32,6 +32,49 @@ String listFiles(bool ishtml)
     {
         if (ishtml)
         {
+            if (foundfile.isDirectory())
+            {
+                returnText += "<tr align='left'><td>" + String(foundfile.name()) + "</td><td></td>";
+                returnText += "<td></td>";
+                returnText += "<td></td></tr>";
+            }
+            else
+            {
+            returnText += "<tr align='left'><td>" + String(foundfile.name()) + "</td><td>" + humanReadableSize(foundfile.size()) + "</td>";
+            returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'download\')\">Download</button>";
+            returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
+            }
+        }
+        else
+        {
+            returnText += "File: " + String(foundfile.name()) + " Size: " + humanReadableSize(foundfile.size()) + "\n";
+        }
+        foundfile = root.openNextFile();
+    }
+    if (ishtml)
+    {
+        returnText += "</table>";
+    }
+    root.close();
+    foundfile.close();
+    return returnText;
+}
+
+// list all of the files, if ishtml=true, return html rather than simple text
+String listSDFiles(bool ishtml)
+{
+    String returnText = "";
+    Log.infoln("Listing files stored on SD Card");
+    File root = SD.open("/");
+    File foundfile = root.openNextFile();
+    if (ishtml)
+    {
+        returnText += "<table><tr><th align='left'>Name</th><th align='left'>Size</th><th></th><th></th></tr>";
+    }
+    while (foundfile)
+    {
+        if (ishtml)
+        {
             returnText += "<tr align='left'><td>" + String(foundfile.name()) + "</td><td>" + humanReadableSize(foundfile.size()) + "</td>";
             returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'download\')\">Download</button>";
             returnText += "<td><button onclick=\"downloadDeleteButton(\'" + String(foundfile.name()) + "\', \'delete\')\">Delete</button></tr>";
@@ -50,7 +93,6 @@ String listFiles(bool ishtml)
     foundfile.close();
     return returnText;
 }
-
 
 // parses and processes webpages
 // if the webpage has %SOMETHING% or %SOMETHINGELSE% it will replace those strings with the ones defined
@@ -166,6 +208,19 @@ void initWebServer()
       logmessage += " Auth: Success";
       Log.infoln(logmessage.c_str());
       request->send(200, "text/plain", listFiles(true));
+    } else {
+      logmessage += " Auth: Failed";
+      Log.infoln(logmessage.c_str());
+      return request->requestAuthentication();
+    } });
+
+    webServer.on("/listSDfiles", HTTP_GET, [](AsyncWebServerRequest *request)
+                 {
+    String logmessage = "Client:" + request->client()->remoteIP().toString() + " " + request->url();
+    if (checkUserWebAuth(request)) {
+      logmessage += " Auth: Success";
+      Log.infoln(logmessage.c_str());
+      request->send(200, "text/plain", listSDFiles(true));
     } else {
       logmessage += " Auth: Failed";
       Log.infoln(logmessage.c_str());

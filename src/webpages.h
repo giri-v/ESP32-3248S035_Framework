@@ -22,6 +22,7 @@ const char index_html[] PROGMEM = R"rawliteral(
   <button onclick="logoutButton()">Logout</button>
   <button onclick="rebootButton()">Reboot</button>
   <button onclick="listFilesButton()">List Files</button>
+  <button onclick="listSDFilesButton()">List SD Files</button>
   <button onclick="showUploadButtonFancy()">Upload File</button>
   </p>
   <p id="status"></p>
@@ -45,7 +46,14 @@ function listFilesButton() {
   xmlhttp=new XMLHttpRequest();
   xmlhttp.open("GET", "/listfiles", false);
   xmlhttp.send();
-  document.getElementById("detailsheader").innerHTML = "<h3>Files<h3>";
+  document.getElementById("detailsheader").innerHTML = "<h3>SPIFFS Files<h3>";
+  document.getElementById("details").innerHTML = xmlhttp.responseText;
+}
+function listSDFilesButton() {
+  xmlhttp=new XMLHttpRequest();
+  xmlhttp.open("GET", "/listSDfiles", false);
+  xmlhttp.send();
+  document.getElementById("detailsheader").innerHTML = "<h3>SD Files<h3>";
   document.getElementById("details").innerHTML = xmlhttp.responseText;
 }
 function downloadDeleteButton(filename, action) {

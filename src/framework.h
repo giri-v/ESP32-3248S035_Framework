@@ -207,6 +207,7 @@ void initFS()
 #include <TFT_eSPI.h>
 
 TFT_eSPI tft = TFT_eSPI(); // Create object "tft"
+SPIClass tftspi = tft.getSPIinstance();
 
 int screenWidth = tft.width();
 int screenHeight = tft.height();
@@ -269,17 +270,63 @@ void drawString(String text, int x, int y, int font_size, int color, int bg_colo
 
 #define SD_CS 5
 
+// printDirectory
+void printDirectory(File dir, int numTabs)
+{
+    while (true)
+    {
+        File entry = dir.openNextFile();
+        String res = "";
+        if (!entry)
+        {
+
+            // no more files
+            break;
+        }
+        for (uint8_t i = 0; i < numTabs; i++)
+        {
+            res += " ";
+        }
+        res += entry.name();
+        if (entry.isDirectory())
+        {
+            res += "/";
+            Log.infoln(res.c_str());
+            printDirectory(entry, numTabs + 1);
+        }
+        else
+        {
+
+            // Files have sizes, directories do not.
+            res += "  ";
+            uint32_t tSize = static_cast<uint32_t>(entry.size());
+            res += String(tSize);
+        }
+        Log.infoln(res.c_str());
+        entry.close();
+    }
+}
+
 void initSD()
 {
     String oldMethodName = methodName;
     methodName = "initSD()";
     Log.verboseln("Entering...");
 
+#ifdef USE_GRAPHICS1
+    if (!SD.begin(SD_CS, tftspi))
+    {
+        Log.errorln("SD Card Mount Failed");
+        return;
+    }
+#else
     if (!SD.begin(SD_CS))
     {
         Log.errorln("SD Card Mount Failed");
         return;
     }
+#endif
+
     uint8_t cardType = SD.cardType();
     if (cardType == CARD_NONE)
     {
@@ -292,6 +339,17 @@ void initSD()
 
     uint64_t cardSize = SD.cardSize() / (1024 * 1024);
     Log.infoln("SD Card Size: %l MB", cardSize);
+
+    File root = SD.open("/");
+    if (!root)
+    {
+        Log.errorln("Failed to open SD Card!!!");
+    }
+    else
+    {
+        printDirectory(root, 0);
+        root.close();
+    }
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;

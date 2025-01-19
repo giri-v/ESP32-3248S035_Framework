@@ -424,10 +424,27 @@ void app_setup()
     // pinMode(DOORBELL_PIN, INPUT);
     // attachInterrupt(digitalPinToInterrupt(DOORBELL_PIN), doorbellPressed, FALLING);
 
+    File root = SD.open("/");
+    if (!root)
+    {
+        Log.errorln("Failed to open directory");
+    }
+    else
+    {
+        printDirectory(root, 0);
+    }
+
+
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
 }
+
+////////////////////////////////////////////////////////////////////
+/// @fn void app_loop()
+/// @brief Called by the framework once per loop after all framework
+/// processing is complete
+////////////////////////////////////////////////////////////////////
 
 void app_loop()
 {
