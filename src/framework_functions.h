@@ -704,6 +704,10 @@ void framework_setup()
 
     initFS();
 
+#ifdef USE_GRAPHICS
+    setupDisplay();
+#endif
+
 #ifdef USE_SD_CARD
     initSD();
 #endif
@@ -712,9 +716,6 @@ void framework_setup()
     initAudioOutput();
 #endif
 
-#ifdef USE_GRAPHICS
-    setupDisplay();
-#endif
 
     // This is connectivity setup code
     mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE,

@@ -39,7 +39,6 @@ extern "C"
 
 #endif // SECRETS_H
 
-
 #include <WiFi.h>
 #include <Preferences.h>
 #include <SPI.h>
@@ -93,12 +92,6 @@ char topic[128] = "log/foo";
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
 #define maximum(a, b) (((a) > (b)) ? (a) : (b))
 
-
-
-
-
-
-
 const char *appName = APP_NAME;
 const char *appSecret = APP_SECRET;
 #define FIRMWARE_VERSION "v0.0.1"
@@ -112,11 +105,8 @@ char friendlyName[100] = "NoNameSet";
 bool isFirstLoop = true;
 bool isGoodTime = false;
 
-
-
 // ********** Connectivity Parameters **********
 AsyncMqttClient mqttClient;
-
 
 int volume = 50; // Volume is %
 int bootCount = 0;
@@ -126,13 +116,10 @@ int maxOtherIndex = -1;
 bool shouldReboot = false;
 Preferences preferences;
 
-
 uint8_t macAddress[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
 
 // **************** Debug Parameters ************************
 String methodName = "";
-
 
 #pragma region Standard Helper Functions
 
@@ -269,6 +256,11 @@ void drawString(String text, int x, int y, int font_size, int color, int bg_colo
 #include <SD.h>
 
 #define SD_CS 5
+#define SD_SCLK 18
+#define SD_MISO 19
+#define SD_MOSI 23
+
+SPIClass SDSPI(VSPI);
 
 // printDirectory
 void printDirectory(File dir, int numTabs)
@@ -313,14 +305,22 @@ void initSD()
     methodName = "initSD()";
     Log.verboseln("Entering...");
 
-#ifdef USE_GRAPHICS1
-    if (!SD.begin(SD_CS, tftspi))
+    pinMode(5, OUTPUT);
+    digitalWrite(5, HIGH);
+
+#ifdef USE_GRAPHICS
+    tftspi.begin(18, 19, 23); // tftspi.begin(SCLK, MISO, MOSI);
+    tftspi.setFrequency(1000000);
+    if (!SD.begin(5, tftspi))
     {
         Log.errorln("SD Card Mount Failed");
         return;
     }
+
 #else
-    if (!SD.begin(SD_CS))
+    SDSPI.begin(18, 19, 23); // SDSPI.begin(SCLK, MISO, MOSI);
+    SDSPI.setFrequency(1000000);
+    if (!SD.begin(5, SDSPI))
     {
         Log.errorln("SD Card Mount Failed");
         return;
@@ -371,7 +371,7 @@ AudioOutputI2S *out;
 bool mp3Done = true;
 
 /// @fn void initAudioOutput()
-/// @brief The only function to 
+/// @brief The only function to
 
 void initAudioOutput()
 {
@@ -379,7 +379,6 @@ void initAudioOutput()
     out->SetOutputModeMono(true);
     out->SetGain(1.0);
 }
-
 
 void playMP3(char *filename)
 {
@@ -483,7 +482,7 @@ int32_t pngSeek(PNGFILE *page, int32_t position)
 
 /// @brief PNGDecoder Helper function to allow the decoder engine to draw a single line
 ///        of the image
-/// @param pDraw 
+/// @param pDraw
 void pngDraw(PNGDRAW *pDraw)
 {
     uint16_t lineBuffer[MAX_IMAGE_WIDTH];
@@ -516,7 +515,6 @@ void drawPNG(const char *filename, int x, int y)
         tft.endWrite();
     }
 }
-
 
 #ifdef USE_SD_CARD
 
