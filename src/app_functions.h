@@ -12,7 +12,7 @@
 #include "web_server.h"
 #endif
 
-#include "../assets/fonts/NotoSans_Bold.h"
+#include "../assets/fonts/Roboto.h"
 
 // ********* Framework App Parameters *****************
 
@@ -106,6 +106,43 @@ void drawSplashScreen()
     methodName = oldMethodName;
 }
 
+void setupFonts()
+{
+#ifdef USE_OPEN_FONT_RENDERER
+    String oldMethodName = methodName;
+    methodName = "setupDisplay()";
+    Log.verboseln("Entering");
+
+    ofr.setDrawer(tft);
+
+    if (fontFS.exists("/fonts/Roboto-Regular.ttf"))
+    {
+        Log.infoln("Loading font from file.");
+        if (ofr.loadFont("/fonts/Roboto-Regular.ttf"))
+        {
+            Log.errorln("Failed to load font from SPIFFS, loading from PROGMEM!!!");
+            ofr.loadFont(Roboto, sizeof(Roboto));
+        }
+        else
+        {
+            Log.infoln("Loaded font from SPIFFS.");
+        }
+    }
+    else
+    {
+        Log.errorln("Font does not exist on SPIFFS, loading from PROGMEM!!!");
+        ofr.loadFont(Roboto, sizeof(Roboto));
+    }
+
+    ofr.setFontColor(TFT_WHITE, TFT_BLACK);
+    ofr.setFontSize(baseFontSize);
+    ofr.setAlignment(Align::MiddleCenter);
+
+    Log.verboseln("Exiting...");
+    methodName = oldMethodName;
+#endif
+}
+
 void setupDisplay()
 {
     String oldMethodName = methodName;
@@ -120,15 +157,9 @@ void setupDisplay()
     tft.fillScreen(TFT_BLACK);
 #endif
 
-#ifdef USE_OPEN_FONT_RENDERER
-    ofr.setDrawer(tft);
-    ofr.loadFont(NotoSans_Bold, sizeof(NotoSans_Bold));
-    ofr.setFontColor(TFT_WHITE, TFT_BLACK);
-    ofr.setFontSize(baseFontSize);
-    ofr.setAlignment(Align::MiddleCenter);
-#endif
 
-    drawSplashScreen();
+
+
 
     Log.verboseln("Exiting...");
     methodName = oldMethodName;

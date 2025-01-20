@@ -210,46 +210,6 @@ void clearScreen()
 
 #pragma endregion
 
-#pragma region OpenFontRenderer Drawing Functions
-
-#ifdef USE_OPEN_FONT_RENDERER
-
-#include <OpenFontRender.h>
-
-OpenFontRender ofr;
-
-void drawString(String text, int x, int y)
-{
-    ofr.setCursor(x, y);
-    if (ofr.getAlignment() == Align::MiddleCenter)
-    {
-        ofr.setCursor(x, y - ofr.getFontSize() / 5 - 2);
-    }
-    ofr.printf(text.c_str());
-}
-
-void drawString(String text, int x, int y, int font_size)
-{
-    ofr.setFontSize(font_size);
-    drawString(text, x, y);
-}
-
-void drawString(String text, int x, int y, int font_size, int color)
-{
-    ofr.setFontColor(color);
-    drawString(text, x, y, font_size);
-}
-
-void drawString(String text, int x, int y, int font_size, int color, int bg_color)
-{
-    ofr.setFontColor(color, bg_color);
-    drawString(text, x, y, font_size);
-}
-
-#endif
-
-#pragma endregion
-
 #pragma region SD Card Functions
 
 #ifdef USE_SD_CARD
@@ -340,20 +300,83 @@ void initSD()
     uint64_t cardSize = SD.cardSize() / (1024 * 1024);
     Log.infoln("SD Card Size: %l MB", cardSize);
 
-    File root = SD.open("/");
-    if (!root)
-    {
-        Log.errorln("Failed to open SD Card!!!");
-    }
-    else
-    {
-        printDirectory(root, 0);
-        root.close();
-    }
-
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
 }
+#endif
+
+#pragma endregion
+
+#pragma region OpenFontRenderer Drawing Functions
+
+#ifdef USE_OPEN_FONT_RENDERER
+
+#include <OpenFontRender.h>
+
+OpenFontRender ofr;
+
+#ifdef FONT_FS
+#include <list>
+std::list<File> ofr_file_list; // For multiple file loading
+fs::FS fontFS = FONT_FS;
+
+FT_FILE *OFR_fopen(const char *filename, const char *mode)
+{
+    File f = fontFS.open(filename, mode);
+    ofr_file_list.push_back(f);
+    return &ofr_file_list.back();
+}
+
+void OFR_fclose(FT_FILE *stream)
+{
+    ((File *)stream)->close();
+}
+
+size_t OFR_fread(void *ptr, size_t size, size_t nmemb, FT_FILE *stream)
+{
+    return ((File *)stream)->read((uint8_t *)ptr, size * nmemb);
+}
+
+int OFR_fseek(FT_FILE *stream, long int offset, int whence)
+{
+    return ((File *)stream)->seek(offset, (SeekMode)whence);
+}
+
+long int OFR_ftell(FT_FILE *stream)
+{
+    return ((File *)stream)->position();
+}
+
+#endif
+
+void drawString(String text, int x, int y)
+{
+    ofr.setCursor(x, y);
+    if (ofr.getAlignment() == Align::MiddleCenter)
+    {
+        ofr.setCursor(x, y - ofr.getFontSize() / 5 - 2);
+    }
+    ofr.printf(text.c_str());
+}
+
+void drawString(String text, int x, int y, int font_size)
+{
+    ofr.setFontSize(font_size);
+    drawString(text, x, y);
+}
+
+void drawString(String text, int x, int y, int font_size, int color)
+{
+    ofr.setFontColor(color);
+    drawString(text, x, y, font_size);
+}
+
+void drawString(String text, int x, int y, int font_size, int color, int bg_color)
+{
+    ofr.setFontColor(color, bg_color);
+    drawString(text, x, y, font_size);
+}
+
 #endif
 
 #pragma endregion
