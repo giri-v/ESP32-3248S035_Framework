@@ -653,7 +653,7 @@ void setupMQTT()
     mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE,
                                       (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
     heartbeatTimer = xTimerCreate("heartbeatTimer", pdMS_TO_TICKS(heartbeatInterval * 1000),
-                                      pdFALSE, (void *)0,
+                                      pdTRUE, (void *)0,
                                       reinterpret_cast<TimerCallbackFunction_t>(mqttPublishID));
 
     mqttClient.onConnect(onMqttConnect);
