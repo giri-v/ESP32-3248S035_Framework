@@ -123,6 +123,12 @@ String methodName = "";
 
 #pragma region Standard Helper Functions
 
+void reboot(const char *message)
+{
+    Log.infoln("Rebooting ESP32: %s", message);
+    ESP.restart();
+}
+
 bool isNullorEmpty(char *str)
 {
     if ((str == NULL) || (str[0] == '\0'))

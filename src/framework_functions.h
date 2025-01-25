@@ -12,13 +12,16 @@
 const char *localTZ = "PST8PDT,M3.2.0/2:00:00,M11.1.0/2:00:00";
 const long gmtOffset_sec = -8 * 60 * 60;
 const int daylightOffset_sec = 3600;
-int maxWifiFailCount = 5;
-int wifiFailCountTimeLimit = 10;
+
+
+
+
+
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 TimerHandle_t appInstanceIDWaitTimer;
 TimerHandle_t wifiFailCountTimer;
-
+TimerHandle_t heartbeatTimer;
 int wifiFailCount = 0;
 
 char latestFirmwareFileName[100];
@@ -48,11 +51,6 @@ void setupLogging();
 void logHWInfo();
 void getPreferences();
 
-void reboot(const char* message)
-{
-    Log.infoln("Rebooting ESP32: %s", message);
-    ESP.restart();
-}
 
 
 void connectToWifi()
@@ -361,6 +359,7 @@ void WiFiEvent(WiFiEvent_t event)
     methodName = oldMethodName;
 }
 
+
 void mqttPublishID()
 {
     String oldMethodName = methodName;
@@ -371,7 +370,6 @@ void mqttPublishID()
     char payloadJson[100];
     sprintf(onlineTopic, "%s/online", appName);
     sprintf(payloadJson, "{ \"appInstanceID\" : \"%i\" , \"online\" : \"true\" }", appInstanceID);
-    // sprintf(payloadJson, "{ \"appInstanceID\" : \"%i\" }", appInstanceID);
 
     Log.infoln("Published %s topic", onlineTopic);
     int pubRes = mqttClient.publish(onlineTopic, 1, false, payloadJson);
@@ -408,15 +406,14 @@ void onMqttConnect(bool sessionPresent)
 
     if (appInstanceID > -1)
     {
-        // TODO: This function is stuck - need to reenable
         mqttPublishID();
+        xTimerStart(heartbeatTimer, 0);
+        // TODO: This function is stuck - need to reenable
         // mqttPublishWill();
     }
     else
     {
-        // mqttClient.publish(idTopic, 1, false);
         Log.infoln("Don't have appInstanceID yet so nothing to publish to MQTT.");
-        // wichimeIDWaitTimer.once_ms(10000, registerMQTTTopics);
     }
 
     ProcessMqttConnectTasks();
@@ -434,6 +431,8 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
     (void)reason;
 
     Log.warningln("Disconnected from MQTT.");
+
+    xTimerStop(heartbeatTimer, 0);
 
     ProcessMqttDisconnectTasks();
 
@@ -653,6 +652,9 @@ void setupMQTT()
     // This is connectivity setup code
     mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE,
                                       (void *)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+    heartbeatTimer = xTimerCreate("heartbeatTimer", pdMS_TO_TICKS(heartbeatInterval * 1000),
+                                      pdFALSE, (void *)0,
+                                      reinterpret_cast<TimerCallbackFunction_t>(mqttPublishID));
 
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onDisconnect(onMqttDisconnect);

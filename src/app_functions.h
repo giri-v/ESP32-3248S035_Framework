@@ -16,20 +16,29 @@
 
 // ********* Framework App Parameters *****************
 
-int appVersion = 1;
+
 
 
 bool isFirstDraw = true;
 
 // ********** Connectivity Parameters **********
 
-typedef void (*mqttMessageHandler)(char *topic, char *payload,
-                                   AsyncMqttClientMessageProperties properties,
-                                   size_t len, size_t index, size_t total);
+
 
 // ********** App Global Variables **********
 
+////////////////////////////////////////////////////////////////////
+/// @defgroup fw_params Framework Parameters
+/// @brief These parameter defaults should be fine for most apps
+////////////////////////////////////////////////////////////////////
+///@{
 
+int appVersion = 1;
+int maxWifiFailCount = 5;
+int wifiFailCountTimeLimit = 10;
+int heartbeatInterval = 1800; // in seconds
+
+///@}
 
 // Should be /internal/iot/firmware
 const char *firmwareUrl = "/firmware/";
@@ -47,14 +56,18 @@ int friendlyNameFontSize = 24;
 int appInstanceIDFontSize = 18;
 int timeFontSize = 128;
 
-// ********** Possible Customizations Start ***********
 
 int otherAppTopicCount = 0;
 char otherAppTopic[10][25];
 void (*otherAppMessageHandler[10])(char *topic, JsonDocument &doc);
 
+////////////////////////////////////////////////////////////////////
+/// @defgroup app_core_fns App Core Functions
+/// @brief The framework depends on these functions. They may be
+///        empty but may NOT be removed.
+////////////////////////////////////////////////////////////////////
+///@{
 void printTimestamp(Print *_logOutput, int x);
-void logTimestamp();
 void storePrefs();
 void loadPrefs();
 void ProcessMqttDisconnectTasks();
@@ -64,6 +77,10 @@ void ProcessWifiConnectTasks();
 void appMessageHandler(char *topic, JsonDocument &doc);
 void app_loop();
 void app_setup();
+
+///@}
+
+
 
 // Example functions
 void setupDisplay();
@@ -244,6 +261,31 @@ void appMessageHandler(char *topic, JsonDocument &doc)
     // We can assume the first 2 subtopics are the appName and the appInstanceID
     // The rest of the subtopics are the command
 
+    if (topics[2] == "reset")
+    {
+        reboot("Reset command received from MQTT");
+    }
+    else if (topics[2] == "set")
+    {
+        // TODO: Do something here
+        if (topicCounter > 3)
+        {
+            // Only one parameter can be set this way
+            // It should be topics[4]
+            // But we should check that there are no more topics after that
+            // If there are we should reject the command as malformed
+        }
+        else
+        {
+        // Need to scan the JSON to see what parameters the user
+        // wants to set
+        }
+    }
+    else if (topics[2] == "get")
+    {
+        // TODO: Do something here
+    }
+
     Log.verboseln("Exiting...");
     methodName = oldMethodName;
     return;
@@ -293,32 +335,6 @@ void storePrefs()
     methodName = oldMethodName;
 }
 
-void logTimestamp()
-{
-    String oldMethodName = methodName;
-    methodName = "logTimestamp()";
-    Log.verboseln("Entering...");
-
-    char c[20];
-    time_t rawtime;
-    struct tm *timeinfo;
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-
-    if (timeinfo->tm_year == 70)
-    {
-        sprintf(c, "%10lu ", millis());
-    }
-    else
-    {
-        strftime(c, 20, "%Y%m%d %H:%M:%S", timeinfo);
-    }
-
-    Log.infoln("Time: %s", c);
-
-    Log.verboseln("Exiting...");
-    methodName = oldMethodName;
-}
 
 void printTimestamp(Print *_logOutput, int x)
 {
